@@ -1,10 +1,10 @@
 import { PrintJob, JobStatus, PrintSettings, PricingBreakdown } from '../types/print';
-import { SAMPLE_DOCUMENTS } from '../data/sampleDocuments';
 import { calculatePrintPricing } from './pricingService';
 
-const STORAGE_KEY = 'private_print_bridge_jobs_v2';
+const STORAGE_KEY = 'private_print_bridge_jobs_v3';
 const AUTH_KEY = 'private_print_bridge_admin_auth';
-const DEFAULT_ADMIN_PASSWORD = 'admin'; // Easy default password, customizable in UI
+const DEFAULT_ADMIN_PASSWORD = 'admin';
+const ADMIN_SECRET = 'bd-print-secret-2026';
 
 function generateShortCode(): string {
   const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -19,109 +19,27 @@ export function generateId(): string {
   return 'doc_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
 }
 
-// Initial seed jobs
-function createInitialSeedJobs(): PrintJob[] {
-  const sample1 = SAMPLE_DOCUMENTS[0]; // Resume
-  const sample2 = SAMPLE_DOCUMENTS[1]; // Invoice
-  
-  const now = new Date();
-  const expires1 = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  const expires2 = new Date(now.getTime() + 12 * 60 * 60 * 1000);
+let memoryJobsCache: PrintJob[] = [];
 
-  const defaultSettings1: PrintSettings = {
-    copies: 2,
-    colorMode: 'color',
-    paperSize: 'A4',
-    duplex: 'double_long',
-    orientation: 'portrait',
-    pageRange: 'all',
-    finishing: {
-      staple: 'top_left',
-      binding: 'none',
-      lamination: false,
-      paperWeight: 'heavy_100gsm',
-    },
-    notes: 'Please print on 100gsm bright white paper. Single staple on top-left.',
-  };
-
-  const defaultSettings2: PrintSettings = {
-    copies: 3,
-    colorMode: 'bw',
-    paperSize: 'A4',
-    duplex: 'single',
-    orientation: 'portrait',
-    pageRange: 'all',
-    finishing: {
-      staple: 'none',
-      binding: 'none',
-      lamination: false,
-      paperWeight: 'standard_75gsm',
-    },
-    notes: '3 copies for counter documentation.',
-  };
-
-  const job1: PrintJob = {
-    id: 'doc_resume_bangladesh_01',
-    shortCode: 'PRN-9482',
-    fileName: sample1.name,
-    fileType: 'pdf',
-    mimeType: sample1.mimeType,
-    fileSize: sample1.size,
-    fileDataUrl: '',
-    pageCount: sample1.pageCount,
-    pages: sample1.pages,
-    uploadedAt: new Date(now.getTime() - 25 * 60 * 1000).toISOString(),
-    expiresAt: expires1.toISOString(),
-    status: 'ready',
-    autoDeleteAfterPrint: true,
-    customerName: 'Joy Basak',
-    customerPhone: '+880 1712-345678',
-    customerEmail: 'basakjoy125@gmail.com',
-    settings: defaultSettings1,
-    pricing: calculatePrintPricing(sample1.pageCount, defaultSettings1, 'BDT'),
-    printedCopiesCount: 0,
-    history: [
-      {
-        timestamp: new Date(now.getTime() - 25 * 60 * 1000).toISOString(),
-        action: 'Document encrypted & uploaded from Admin phone',
-        actor: 'admin',
-      },
-    ],
-  };
-
-  const job2: PrintJob = {
-    id: 'doc_invoice_sample_02',
-    shortCode: 'PRN-3820',
-    fileName: sample2.name,
-    fileType: 'pdf',
-    mimeType: sample2.mimeType,
-    fileSize: sample2.size,
-    fileDataUrl: '',
-    pageCount: sample2.pageCount,
-    pages: sample2.pages,
-    uploadedAt: new Date(now.getTime() - 60 * 60 * 1000).toISOString(),
-    expiresAt: expires2.toISOString(),
-    status: 'completed',
-    autoDeleteAfterPrint: false,
-    customerName: 'Joy Basak',
-    settings: defaultSettings2,
-    pricing: calculatePrintPricing(sample2.pageCount, defaultSettings2, 'BDT'),
-    printedCopiesCount: 3,
-    history: [
-      {
-        timestamp: new Date(now.getTime() - 60 * 60 * 1000).toISOString(),
-        action: 'Uploaded from Admin laptop',
-        actor: 'admin',
-      },
-      {
-        timestamp: new Date(now.getTime() - 10 * 60 * 1000).toISOString(),
-        action: 'Printed 3 copies via shop PC browser spooler',
-        actor: 'shopkeeper',
-      },
-    ],
-  };
-
-  return [job1, job2];
+function safeSaveJobs(jobs: PrintJob[]) {
+  memoryJobsCache = jobs;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
+  } catch (err) {
+    console.warn('[Storage] Quota exceeded for localStorage, keeping full job objects in memory cache:', err);
+    try {
+      // Strip huge data URLs from older jobs to fit essential metadata into localStorage
+      const leanJobs = jobs.map((j, index) => {
+        if (index > 0 && j.fileDataUrl && j.fileDataUrl.length > 50000) {
+          return { ...j, fileDataUrl: '' };
+        }
+        return j;
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(leanJobs));
+    } catch {
+      // Even lean jobs fail, keep in memory
+    }
+  }
 }
 
 export const api = {
@@ -135,10 +53,17 @@ export const api = {
     }
   },
 
-  login(password: string): boolean {
-    const savedPassword = localStorage.getItem('print_bridge_custom_pwd') || DEFAULT_ADMIN_PASSWORD;
-    if (password === savedPassword || password === 'admin' || password === 'admin123') {
+  login(username: string, password: string): boolean {
+    if (username.trim() === 'Harry' && password === 'Dumbledore') {
       localStorage.setItem(AUTH_KEY, 'authenticated');
+      // Verify with backend if online
+      fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      }).catch(() => {
+        // Backend offline, local auth succeeds
+      });
       return true;
     }
     return false;
@@ -156,15 +81,35 @@ export const api = {
   getJobs(): PrintJob[] {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) {
-        const initial = createInitialSeedJobs();
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(initial));
-        return initial;
+      let parsed: PrintJob[] = raw ? JSON.parse(raw) : [];
+      
+      // Merge with memory cache to preserve full data URLs
+      if (memoryJobsCache.length > 0) {
+        const memoryMap = new Map(memoryJobsCache.map((j) => [j.id, j]));
+        parsed = parsed.map((j) => {
+          const mem = memoryMap.get(j.id);
+          return mem || j;
+        });
+        // Include any memory-only jobs
+        for (const memJob of memoryJobsCache) {
+          if (!parsed.some((p) => p.id === memJob.id)) {
+            parsed.push(memJob);
+          }
+        }
       }
-      return JSON.parse(raw) as PrintJob[];
+
+      // Filter out any legacy dummy seed jobs
+      const cleaned = parsed.filter(
+        (j) =>
+          j.id !== 'doc_resume_bangladesh_01' &&
+          j.id !== 'doc_invoice_sample_02' &&
+          j.shortCode !== 'PRN-9482' &&
+          j.shortCode !== 'PRN-3820'
+      );
+      return cleaned;
     } catch (err) {
       console.error('Error fetching jobs:', err);
-      return createInitialSeedJobs();
+      return memoryJobsCache;
     }
   },
 
@@ -182,7 +127,8 @@ export const api = {
 
   // Upload new document
   uploadDocument(
-    data: Omit<PrintJob, 'id' | 'shortCode' | 'uploadedAt' | 'history' | 'printedCopiesCount'>
+    data: Omit<PrintJob, 'id' | 'shortCode' | 'uploadedAt' | 'history' | 'printedCopiesCount'>,
+    rawFile?: File
   ): PrintJob {
     const jobs = this.getJobs();
     const now = new Date().toISOString();
@@ -203,7 +149,42 @@ export const api = {
     };
 
     const updated = [newJob, ...jobs];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    safeSaveJobs(updated);
+
+    // Also send to backend Express server if available
+    try {
+      const formData = new FormData();
+      if (rawFile) {
+        formData.append('file', rawFile);
+      } else {
+        // Create synthetic blob if only mock data
+        const blob = new Blob([data.fileDataUrl || 'Sample Document'], { type: data.mimeType || 'text/plain' });
+        formData.append('file', blob, data.fileName);
+      }
+      formData.append('copies', String(data.settings.copies || 1));
+      formData.append('colorMode', data.settings.colorMode);
+      formData.append('paperSize', data.settings.paperSize);
+      formData.append('duplex', data.settings.duplex);
+      formData.append('customerName', data.customerName || 'Anonymous');
+      if (data.customerPhone) formData.append('customerPhone', data.customerPhone);
+      if (data.pinCode) formData.append('pinCode', data.pinCode);
+      formData.append('autoDeleteAfterPrint', String(data.autoDeleteAfterPrint));
+      formData.append('pageCount', String(data.pageCount || 1));
+
+      fetch('/api/upload', {
+        method: 'POST',
+        headers: {
+          'x-admin-key': ADMIN_SECRET,
+        },
+        body: formData,
+      }).catch((err) => {
+        // Backend optional/local demo mode
+        console.log('[API] Backend sync skipped or unavailable:', err.message);
+      });
+    } catch (e) {
+      console.warn('[API] Could not dispatch to backend:', e);
+    }
+
     return newJob;
   },
 
@@ -242,7 +223,7 @@ export const api = {
 
     // If auto-delete after print is enabled and print finished, mark as wiped
     if (status === 'completed' && current.autoDeleteAfterPrint) {
-      updated.fileDataUrl = ''; // Wipe sensitive raw document bytes
+      updated.fileDataUrl = ''; // Wipe sensitive raw document bytes from local storage
       updated.pages = [
         {
           pageNumber: 1,
@@ -259,7 +240,20 @@ export const api = {
     }
 
     jobs[idx] = updated;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
+    safeSaveJobs(jobs);
+
+    // Send status update to backend server to trigger physical file deletion
+    fetch(`/api/jobs/${jobId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status,
+        note: options?.note,
+        actor: options?.actor || 'shopkeeper',
+        incrementPrintCount: options?.incrementPrintCount,
+      }),
+    }).catch(() => {});
+
     return updated;
   },
 
@@ -268,7 +262,11 @@ export const api = {
     const jobs = this.getJobs();
     const filtered = jobs.filter((j) => j.id !== jobId && j.shortCode !== jobId);
     if (filtered.length !== jobs.length) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+      safeSaveJobs(filtered);
+      // Notify backend
+      fetch(`/api/jobs/${jobId}`, {
+        method: 'DELETE',
+      }).catch(() => {});
       return true;
     }
     return false;

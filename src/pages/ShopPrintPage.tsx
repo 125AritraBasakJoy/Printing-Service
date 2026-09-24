@@ -26,13 +26,15 @@ interface ShopPrintPageProps {
     status: JobStatus,
     options?: { note?: string; incrementPrintCount?: boolean }
   ) => void;
-  onAdminLoginClick?: () => void;
+  onNavigateToQueue?: () => void;
+  onSearchJob?: (query: string) => void;
 }
 
 export const ShopPrintPage: React.FC<ShopPrintPageProps> = ({
   job,
   onUpdateStatus,
-  onAdminLoginClick,
+  onNavigateToQueue,
+  onSearchJob,
 }) => {
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [enteredPin, setEnteredPin] = useState('');
@@ -43,21 +45,53 @@ export const ShopPrintPage: React.FC<ShopPrintPageProps> = ({
 
   if (!job) {
     return (
-      <div className="max-w-md mx-auto py-20 px-4 text-center space-y-4">
-        <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto text-slate-400">
-          <FileText className="w-8 h-8" />
+      <div className="max-w-md mx-auto py-16 px-4 text-center space-y-5 animate-in fade-in duration-200">
+        <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto shadow-xs">
+          <Printer className="w-8 h-8" />
         </div>
-        <h2 className="text-xl font-bold text-slate-900">Document Not Found or Expired</h2>
-        <p className="text-xs text-slate-500">
-          This print link may have expired or was securely wiped from memory after printing.
-        </p>
-        {onAdminLoginClick && (
-          <button
-            onClick={onAdminLoginClick}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-semibold hover:bg-indigo-700 transition-colors"
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">Waiting for Print Job</h2>
+          <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto leading-relaxed">
+            Enter the customer's token code (e.g. PRN-XXXX) or scan their QR code to load the document for printing.
+          </p>
+        </div>
+
+        {onSearchJob && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const form = e.currentTarget;
+              const input = (form.elements.namedItem('token') as HTMLInputElement)?.value;
+              if (input && input.trim()) {
+                onSearchJob(input.trim());
+              }
+            }}
+            className="flex gap-2 max-w-xs mx-auto"
           >
-            Go to Admin Upload Panel
-          </button>
+            <input
+              name="token"
+              type="text"
+              placeholder="Enter Code (e.g. PRN-XXXX)"
+              className="flex-1 px-3.5 py-2 text-xs font-mono bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 uppercase"
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
+            >
+              Load
+            </button>
+          </form>
+        )}
+
+        {onNavigateToQueue && (
+          <div className="pt-2">
+            <button
+              onClick={onNavigateToQueue}
+              className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold"
+            >
+              Or check Shop Queue & Logs →
+            </button>
+          </div>
         )}
       </div>
     );
@@ -95,22 +129,92 @@ export const ShopPrintPage: React.FC<ShopPrintPageProps> = ({
     }
   };
 
-  // Generate printable HTML content for iframe
+  // Generate printable HTML content for iframe (images / scanned documents / text)
   const generatePrintableHtml = () => {
+    const hasImagePages = job.pages.some(
+      (p) => p.previewUrl && (p.previewUrl.startsWith('data:image/') || p.previewUrl.startsWith('blob:'))
+    );
+
+    if (hasImagePages || job.fileType === 'image') {
+      const pagesToRender = hasImagePages
+        ? job.pages
+        : [
+            {
+              pageNumber: 1,
+              title: job.fileName,
+              previewUrl: job.fileDataUrl,
+            },
+          ];
+
+      const pagesHtml = pagesToRender
+        .map(
+          (page) => `
+          <div class="print-page-wrapper">
+            <img
+              src="${page.previewUrl}"
+              alt="${page.title || 'Page'}"
+              style="max-width: 100%; max-height: 100vh; object-fit: contain; display: block; margin: 0 auto; ${
+                job.settings.colorMode === 'bw' ? 'filter: grayscale(100%) contrast(120%);' : ''
+              }"
+            />
+          </div>
+        `
+        )
+        .join('<div style="page-break-after: always; break-after: page;"></div>');
+
+      return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Print - ${job.fileName}</title>
+          <style>
+            @page {
+              size: ${job.settings.paperSize === 'A3' ? 'A3' : job.settings.paperSize === 'Legal' ? 'legal' : 'A4'} ${
+                job.settings.orientation === 'landscape' ? 'landscape' : 'portrait'
+              };
+              margin: 0;
+            }
+            body {
+              margin: 0;
+              padding: 0;
+              background: white;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+            }
+            .print-page-wrapper {
+              width: 100%;
+              min-height: 100vh;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              page-break-inside: avoid;
+              box-sizing: border-box;
+              padding: 8px;
+            }
+          </style>
+        </head>
+        <body>
+          ${pagesHtml}
+        </body>
+        </html>
+      `;
+    }
+
     const pagesHtml = job.pages
       .map(
         (page) => `
         <div class="print-page-wrapper">
           ${
             page.htmlContent ||
-            (job.fileDataUrl && job.fileType === 'image'
-              ? `<img src="${job.fileDataUrl}" style="max-width: 100%; height: auto; display: block; margin: 0 auto;" />`
-              : `<div style="padding: 40px; font-family: sans-serif;"><h2>${page.title || 'Document Page'}</h2><p>${page.contentSnippet || ''}</p></div>`)
+            `<div style="padding: 40px; font-family: sans-serif;"><h2>${page.title || 'Document Page'}</h2></div>`
           }
         </div>
       `
       )
-      .join('<div style="page-break-after: always;"></div>');
+      .join('<div style="page-break-after: always; break-after: page;"></div>');
 
     return `
       <!DOCTYPE html>
@@ -118,10 +222,11 @@ export const ShopPrintPage: React.FC<ShopPrintPageProps> = ({
       <head>
         <meta charset="UTF-8">
         <title>Print - ${job.fileName}</title>
-        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
         <style>
           @page {
-            size: ${job.settings.paperSize === 'A3' ? 'A3' : job.settings.paperSize === 'Legal' ? 'legal' : 'A4'} ${job.settings.orientation === 'landscape' ? 'landscape' : 'portrait'};
+            size: ${job.settings.paperSize === 'A3' ? 'A3' : job.settings.paperSize === 'Legal' ? 'legal' : 'A4'} ${
+              job.settings.orientation === 'landscape' ? 'landscape' : 'portrait'
+            };
             margin: 0;
           }
           * {
@@ -134,7 +239,7 @@ export const ShopPrintPage: React.FC<ShopPrintPageProps> = ({
             padding: 0;
             background: white;
             color: #0f172a;
-            font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+            font-family: system-ui, -apple-system, sans-serif;
             ${job.settings.colorMode === 'bw' ? 'filter: grayscale(100%) contrast(120%);' : ''}
           }
           .print-page-wrapper {
@@ -152,17 +257,75 @@ export const ShopPrintPage: React.FC<ShopPrintPageProps> = ({
     `;
   };
 
-  // Target the embedded iframe directly to mimic the MS Word print experience
+  // Target the embedded iframe directly to mimic native print experience
   const handleIframePrint = () => {
     setPrintTriggered(true);
     onUpdateStatus(job.id, 'printing', {
-      note: `Shopkeeper triggered native iframe print wizard for ${job.settings.copies} ${
+      note: `Shopkeeper triggered native print wizard for ${job.settings.copies} ${
         job.settings.copies === 1 ? 'copy' : 'copies'
       }`,
       incrementPrintCount: true,
     });
 
     const iframe = document.getElementById('document-preview-frame') as HTMLIFrameElement;
+    const hasImagePages = job.pages.some(
+      (p) => p.previewUrl && (p.previewUrl.startsWith('data:image/') || p.previewUrl.startsWith('blob:'))
+    );
+
+    // 1. If scanned pages or images, render high-fidelity HTML sheets into isolated iframe
+    if (hasImagePages || job.fileType === 'image') {
+      if (iframe && iframe.contentWindow) {
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        doc.open();
+        doc.write(generatePrintableHtml());
+        doc.close();
+
+        setTimeout(() => {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        }, 300);
+        return;
+      }
+    }
+
+    // 2. For vector PDF files, generate clean Blob URL to bypass browser data: URI sandbox restrictions
+    if (job.fileType === 'pdf' && job.fileDataUrl) {
+      let printUrl = job.fileDataUrl;
+      if (printUrl.startsWith('data:')) {
+        try {
+          const parts = printUrl.split(',');
+          const mime = parts[0].match(/:(.*?);/)?.[1] || 'application/pdf';
+          const binary = atob(parts[1]);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+          }
+          const blob = new Blob([bytes], { type: mime });
+          printUrl = URL.createObjectURL(blob);
+        } catch (e) {
+          console.error('Error creating print blob URL:', e);
+        }
+      }
+
+      if (iframe) {
+        iframe.src = printUrl;
+        iframe.onload = () => {
+          setTimeout(() => {
+            try {
+              iframe.contentWindow?.focus();
+              iframe.contentWindow?.print();
+            } catch (e) {
+              const printWin = window.open(printUrl, '_blank');
+              printWin?.focus();
+              printWin?.print();
+            }
+          }, 400);
+        };
+        return;
+      }
+    }
+
+    // 3. Fallback
     if (iframe && iframe.contentWindow) {
       const doc = iframe.contentDocument || iframe.contentWindow.document;
       doc.open();
@@ -174,7 +337,6 @@ export const ShopPrintPage: React.FC<ShopPrintPageProps> = ({
         iframe.contentWindow?.print();
       }, 250);
     } else {
-      // Direct window fallback
       setTimeout(() => {
         window.print();
       }, 150);

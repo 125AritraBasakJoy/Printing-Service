@@ -19,7 +19,7 @@ import { QrCodeView } from './QrCodeView';
 
 interface ShareSuccessCardProps {
   job: PrintJob;
-  onOpenShopView: (jobId: string) => void;
+  onOpenShopView?: (jobId: string) => void;
   onNewUpload: () => void;
 }
 
@@ -31,8 +31,8 @@ export const ShareSuccessCard: React.FC<ShareSuccessCardProps> = ({
   const [copied, setCopied] = useState(false);
   const [showFullQr, setShowFullQr] = useState(false);
 
-  // Build the shareable URL
-  const shareUrl = `${window.location.origin}${window.location.pathname}?job=${job.shortCode}`;
+  // Build the clean shopkeeper shareable URL (/print/:id)
+  const shareUrl = `${window.location.origin}/print/${job.shortCode}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl);
@@ -182,15 +182,14 @@ export const ShareSuccessCard: React.FC<ShareSuccessCardProps> = ({
 
       {/* Action Buttons Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-        {/* Open Shopkeeper Station */}
+        {/* Preview Shopkeeper Link in New Tab */}
         <button
           type="button"
-          onClick={() => onOpenShopView(job.id)}
+          onClick={() => window.open(shareUrl, '_blank')}
           className="w-full py-3 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 group"
         >
-          <Printer className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition-transform" />
-          <span>Open in Shopkeeper Station</span>
-          <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+          <ExternalLink className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition-transform" />
+          <span>Preview Shop Link (New Tab)</span>
         </button>
 
         {/* WhatsApp Share */}

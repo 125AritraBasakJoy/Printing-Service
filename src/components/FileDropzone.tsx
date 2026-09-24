@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { UploadCloud, FileText, CheckCircle2, RefreshCw, Sparkles, FileSpreadsheet, Image as ImageIcon } from 'lucide-react';
-import { SAMPLE_DOCUMENTS, SampleDocTemplate } from '../data/sampleDocuments';
+import { UploadCloud, CheckCircle2, RefreshCw } from 'lucide-react';
 import { DocumentPage, PrintSettings } from '../types/print';
 
 interface FileDropzoneProps {
@@ -12,9 +11,63 @@ interface FileDropzoneProps {
     fileDataUrl: string;
     pageCount: number;
     pages: DocumentPage[];
+    rawFile?: File;
     suggestedSettings?: Partial<PrintSettings>;
   }) => void;
   selectedFileName?: string;
+}
+
+// Scanned PDF JPEG stream extractor (CamScanner, Adobe Scan, phone scanners)
+function extractJpegsFromPdf(uint8Array: Uint8Array): string[] {
+  const images: string[] = [];
+  const len = uint8Array.length;
+  let i = 0;
+  while (i < len - 3) {
+    // Look for JPEG SOI marker (0xFF, 0xD8, 0xFF)
+    if (uint8Array[i] === 0xFF && uint8Array[i + 1] === 0xD8 && uint8Array[i + 2] === 0xFF) {
+      const start = i;
+      let end = -1;
+      let j = start + 3;
+      while (j < len - 1) {
+        // Look for JPEG EOI marker (0xFF, 0xD9)
+        if (uint8Array[j] === 0xFF && uint8Array[j + 1] === 0xD9) {
+          end = j + 2;
+          break;
+        }
+        j++;
+      }
+      if (end !== -1 && end - start > 1024) {
+        const chunk = uint8Array.subarray(start, end);
+        let binary = '';
+        const chunkSize = 8192;
+        for (let k = 0; k < chunk.length; k += chunkSize) {
+          const slice = chunk.subarray(k, Math.min(k + chunkSize, chunk.length));
+          binary += String.fromCharCode.apply(null, Array.from(slice));
+        }
+        images.push('data:image/jpeg;base64,' + btoa(binary));
+        i = end;
+        continue;
+      }
+    }
+    i++;
+  }
+  return images;
+}
+
+// Extract page count from PDF catalog
+function getPdfPageCount(uint8Array: Uint8Array): number {
+  try {
+    const decoder = new TextDecoder('latin1');
+    const text = decoder.decode(uint8Array);
+    const countMatch = text.match(/\/Count\s+(\d+)/);
+    if (countMatch && parseInt(countMatch[1], 10) > 0) {
+      return parseInt(countMatch[1], 10);
+    }
+    const pageMatches = text.match(/\/Type\s*\/Page[^s]/g);
+    return pageMatches && pageMatches.length > 0 ? pageMatches.length : 1;
+  } catch {
+    return 1;
+  }
 }
 
 export const FileDropzone: React.FC<FileDropzoneProps> = ({ onFileLoaded, selectedFileName }) => {
@@ -34,9 +87,8 @@ export const FileDropzone: React.FC<FileDropzoneProps> = ({ onFileLoaded, select
     setIsDragging(false);
   };
 
-  const processFile = (file: File) => {
+  const processFile = async (file: File) => {
     setIsLoading(true);
-    const reader = new FileReader();
 
     const isImage = file.type.startsWith('image/');
     const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
@@ -50,83 +102,149 @@ export const FileDropzone: React.FC<FileDropzoneProps> = ({ onFileLoaded, select
       ? 'text'
       : 'document';
 
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
+    try {
+      if (isPdf) {
+        // Read as ArrayBuffer to extract embedded scanned images & page count
+        const buffer = await file.arrayBuffer();
+        const uint8Array = new Uint8Array(buffer);
+        const extractedJpegs = extractJpegsFromPdf(uint8Array);
+        const parsedPagesCount = getPdfPageCount(uint8Array);
 
-      // Generate page representations
-      let pages: DocumentPage[] = [];
+        // Also convert to DataURL for iframe / raw download
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const dataUrl = (e.target?.result as string) || '';
 
-      if (isImage) {
-        pages = [
-          {
-            pageNumber: 1,
-            title: file.name,
-            previewUrl: dataUrl,
-          },
-        ];
-      } else if (isText) {
-        // Read text snippet for formatted presentation
-        const textSnippet = dataUrl.startsWith('data:text')
-          ? atob(dataUrl.split(',')[1] || '')
-          : 'Document content';
-        pages = [
-          {
-            pageNumber: 1,
-            title: 'Page 1',
-            htmlContent: `
-              <div style="font-family: 'JetBrains Mono', monospace; padding: 28px; white-space: pre-wrap; font-size: 13px; line-height: 1.6; color: #1e293b;">
-                ${textSnippet.slice(0, 3000)}
-              </div>
-            `,
-          },
-        ];
-      } else {
-        // PDF or doc representation
-        pages = [
-          {
-            pageNumber: 1,
-            title: `${file.name} - Page 1`,
-            htmlContent: `
-              <div style="font-family: 'Plus Jakarta Sans', sans-serif; padding: 36px; color: #1e293b; background: white;">
-                <div style="border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 24px;">
-                  <div style="font-size: 20px; font-weight: 800; color: #0f172a;">${file.name}</div>
-                  <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Uploaded Document · Size: ${(file.size / 1024).toFixed(1)} KB</div>
-                </div>
-                <div style="space-y: 16px; color: #334155; font-size: 13px; line-height: 1.6;">
-                  <p>This document is verified and prepared for high-fidelity native print spooling.</p>
-                  <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 24px; text-align: center; margin: 32px 0;">
-                    <div style="font-size: 32px; margin-bottom: 8px;">📄</div>
-                    <div style="font-weight: 700; color: #0f172a;">${file.name}</div>
-                    <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Click 'Print Document' in Shopkeeper View to send directly to physical printer.</div>
-                  </div>
-                </div>
-              </div>
-            `,
-          },
-        ];
+          let pages: DocumentPage[] = [];
+
+          if (extractedJpegs.length > 0) {
+            // High-fidelity scanned PDF pages (CamScanner, Adobe Scan, etc.)
+            pages = extractedJpegs.map((imgUrl, idx) => ({
+              pageNumber: idx + 1,
+              title: `Page ${idx + 1}`,
+              previewUrl: imgUrl,
+            }));
+          } else {
+            // Vector PDF
+            pages = Array.from({ length: Math.max(1, parsedPagesCount) }, (_, idx) => ({
+              pageNumber: idx + 1,
+              title: `Page ${idx + 1}`,
+              previewUrl: dataUrl,
+            }));
+          }
+
+          onFileLoaded({
+            fileName: file.name,
+            fileType: 'pdf',
+            mimeType: 'application/pdf',
+            fileSize: file.size,
+            fileDataUrl: dataUrl,
+            pageCount: pages.length,
+            pages,
+            rawFile: file,
+            suggestedSettings: {
+              copies: 1,
+            },
+          });
+
+          setIsLoading(false);
+        };
+        reader.readAsDataURL(file);
+        return;
       }
 
-      onFileLoaded({
-        fileName: file.name,
-        fileType,
-        mimeType: file.type || 'application/octet-stream',
-        fileSize: file.size,
-        fileDataUrl: dataUrl,
-        pageCount: pages.length,
-        pages,
-      });
+      if (isImage) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const dataUrl = (e.target?.result as string) || '';
+          const pages: DocumentPage[] = [
+            {
+              pageNumber: 1,
+              title: file.name,
+              previewUrl: dataUrl,
+            },
+          ];
 
-      setIsLoading(false);
-    };
+          onFileLoaded({
+            fileName: file.name,
+            fileType: 'image',
+            mimeType: file.type || 'image/jpeg',
+            fileSize: file.size,
+            fileDataUrl: dataUrl,
+            pageCount: 1,
+            pages,
+            rawFile: file,
+          });
 
-    reader.onerror = () => {
-      setIsLoading(false);
-    };
+          setIsLoading(false);
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
 
-    if (isText) {
+      if (isText) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const dataUrl = (e.target?.result as string) || '';
+          const textSnippet = dataUrl.startsWith('data:text')
+            ? atob(dataUrl.split(',')[1] || '')
+            : 'Document content';
+
+          const pages: DocumentPage[] = [
+            {
+              pageNumber: 1,
+              title: 'Page 1',
+              htmlContent: `
+                <div style="font-family: 'JetBrains Mono', monospace; padding: 28px; white-space: pre-wrap; font-size: 13px; line-height: 1.6; color: #1e293b;">
+                  ${textSnippet.slice(0, 4000)}
+                </div>
+              `,
+            },
+          ];
+
+          onFileLoaded({
+            fileName: file.name,
+            fileType: 'text',
+            mimeType: file.type || 'text/plain',
+            fileSize: file.size,
+            fileDataUrl: dataUrl,
+            pageCount: 1,
+            pages,
+            rawFile: file,
+          });
+
+          setIsLoading(false);
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      // Default binary fallback
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = (e.target?.result as string) || '';
+        onFileLoaded({
+          fileName: file.name,
+          fileType,
+          mimeType: file.type || 'application/octet-stream',
+          fileSize: file.size,
+          fileDataUrl: dataUrl,
+          pageCount: 1,
+          pages: [
+            {
+              pageNumber: 1,
+              title: file.name,
+              previewUrl: dataUrl,
+            },
+          ],
+          rawFile: file,
+        });
+        setIsLoading(false);
+      };
       reader.readAsDataURL(file);
-    } else {
-      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Error processing uploaded file:', err);
+      setIsLoading(false);
     }
   };
 
@@ -144,19 +262,6 @@ export const FileDropzone: React.FC<FileDropzoneProps> = ({ onFileLoaded, select
     if (e.target.files && e.target.files.length > 0) {
       processFile(e.target.files[0]);
     }
-  };
-
-  const loadSample = (sample: SampleDocTemplate) => {
-    onFileLoaded({
-      fileName: sample.name,
-      fileType: sample.type,
-      mimeType: sample.mimeType,
-      fileSize: sample.size,
-      fileDataUrl: '',
-      pageCount: sample.pageCount,
-      pages: sample.pages,
-      suggestedSettings: sample.defaultSettings,
-    });
   };
 
   return (
@@ -222,47 +327,6 @@ export const FileDropzone: React.FC<FileDropzoneProps> = ({ onFileLoaded, select
             <span>·</span>
             <span>Up to 50 MB</span>
           </div>
-        </div>
-      </div>
-
-      {/* Preset Test Documents Selector */}
-      <div className="pt-1">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-            Quick Test with Real Pre-formatted Documents:
-          </span>
-          <span className="text-[11px] text-slate-400">1-click load</span>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {SAMPLE_DOCUMENTS.map((sample) => (
-            <button
-              key={sample.id}
-              type="button"
-              onClick={() => loadSample(sample)}
-              className="flex flex-col p-2.5 text-left bg-white hover:bg-indigo-50/50 border border-slate-200 hover:border-indigo-300 rounded-xl transition-all group focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <div className="flex items-center gap-1.5 mb-1">
-                {sample.type === 'pdf' ? (
-                  <FileText className="w-3.5 h-3.5 text-red-500 shrink-0" />
-                ) : sample.type === 'image' ? (
-                  <ImageIcon className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                ) : (
-                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                )}
-                <span className="text-xs font-bold text-slate-800 truncate group-hover:text-indigo-600">
-                  {sample.name.split('_')[0]}
-                </span>
-              </div>
-              <span className="text-[11px] text-slate-500 line-clamp-1 leading-tight">
-                {sample.description}
-              </span>
-              <span className="text-[10px] text-indigo-600 font-medium mt-1">
-                {sample.pageCount} {sample.pageCount === 1 ? 'page' : 'pages'} · {sample.defaultSettings.colorMode?.toUpperCase()}
-              </span>
-            </button>
-          ))}
         </div>
       </div>
     </div>

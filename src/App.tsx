@@ -1,10 +1,11 @@
 /**
- * @license
- * SPDX-License-Identifier: Apache-2.0
+ * BD Print Bridge - Main Application Router
+ * Provides clean URL routing (/admin, /print/:id, /queue, /test-pattern)
+ * and separates Admin and Shopkeeper interfaces.
  */
 
-import React, { useState, useEffect } from 'react';
-import { Navbar } from './components/Navbar';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Navbar, AppRoute } from './components/Navbar';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AdminUploadPage } from './pages/AdminUploadPage';
 import { ShopPrintPage } from './pages/ShopPrintPage';
@@ -14,45 +15,102 @@ import { PrintJob, JobStatus } from './types/print';
 import { api } from './services/api';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<'admin' | 'shop' | 'queue' | 'test-pattern'>('admin');
+  const [currentRoute, setCurrentRoute] = useState<AppRoute>('admin');
   const [jobs, setJobs] = useState<PrintJob[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'info' | 'success' } | null>(null);
 
-  const reloadJobs = () => {
+  const reloadJobs = useCallback(() => {
     const list = api.getJobs();
     setJobs(list);
     return list;
-  };
+  }, []);
 
-  useEffect(() => {
-    const initialJobs = reloadJobs();
-
-    // Check URL parameters for ?job=PRN-XXXX, ?id=..., or path /print/PRN-XXXX
+  // Parse path and search params to determine route and active job
+  const parseCurrentUrl = useCallback((allJobs: PrintJob[]) => {
+    const path = window.location.pathname.toLowerCase();
     const params = new URLSearchParams(window.location.search);
     const jobParam = params.get('job') || params.get('id');
-    const path = window.location.pathname;
 
-    if (jobParam) {
-      const match = api.getJobById(jobParam);
-      if (match) {
-        setSelectedJobId(match.id);
-        setCurrentView('shop');
+    if (path.startsWith('/admin')) {
+      setCurrentRoute('admin');
+    } else if (path.startsWith('/queue')) {
+      setCurrentRoute('queue');
+    } else if (path.startsWith('/test-pattern') || path.startsWith('/test')) {
+      setCurrentRoute('test-pattern');
+    } else if (path.startsWith('/print') || jobParam) {
+      setCurrentRoute('shop');
+      let targetCode = jobParam;
+      if (!targetCode && path.includes('/print/')) {
+        const parts = window.location.pathname.split('/print/');
+        targetCode = parts[1]?.trim();
       }
-    } else if (path.includes('/print/')) {
-      const parts = path.split('/print/');
-      const code = parts[1]?.trim();
-      if (code) {
-        const match = api.getJobById(code);
+
+      if (targetCode) {
+        const match = api.getJobById(targetCode);
         if (match) {
           setSelectedJobId(match.id);
-          setCurrentView('shop');
         }
+      } else if (allJobs.length > 0 && !selectedJobId) {
+        setSelectedJobId(allJobs[0].id);
       }
-    } else if (initialJobs.length > 0 && !selectedJobId) {
-      setSelectedJobId(initialJobs[0].id);
+    } else {
+      // Default route: Admin is STRICTLY accessible ONLY via /admin
+      // Root '/' and any other path always serves the Shopkeeper Terminal
+      setCurrentRoute('shop');
+      if (allJobs.length > 0 && !selectedJobId) {
+        setSelectedJobId(allJobs[0].id);
+      }
     }
-  }, []);
+  }, [selectedJobId]);
+
+  // Handle URL navigation without full page reloads
+  const navigate = useCallback((route: AppRoute, codeOrId?: string) => {
+    setCurrentRoute(route);
+    let newPath = '/';
+
+    if (route === 'admin') {
+      newPath = '/admin';
+    } else if (route === 'queue') {
+      newPath = '/queue';
+    } else if (route === 'test-pattern') {
+      newPath = '/test-pattern';
+    } else if (route === 'shop') {
+      if (codeOrId) {
+        const match = api.getJobById(codeOrId);
+        if (match) {
+          setSelectedJobId(match.id);
+          newPath = `/print/${match.shortCode}`;
+        } else {
+          newPath = `/print/${codeOrId}`;
+        }
+      } else if (selectedJobId) {
+        const current = api.getJobById(selectedJobId);
+        newPath = current ? `/print/${current.shortCode}` : '/print';
+      } else {
+        newPath = '/print';
+      }
+    }
+
+    if (window.location.pathname !== newPath) {
+      window.history.pushState(null, '', newPath);
+    }
+  }, [selectedJobId]);
+
+  // Initial load and popstate listener
+  useEffect(() => {
+    const initialJobs = reloadJobs();
+    parseCurrentUrl(initialJobs);
+
+    const handlePopState = () => {
+      const currentList = api.getJobs();
+      setJobs(currentList);
+      parseCurrentUrl(currentList);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [reloadJobs, parseCurrentUrl]);
 
   const showToast = (message: string, type: 'info' | 'success' = 'success') => {
     setNotification({ message, type });
@@ -65,7 +123,7 @@ export default function App() {
     const match = api.getJobById(query);
     if (match) {
       setSelectedJobId(match.id);
-      setCurrentView('shop');
+      navigate('shop', match.shortCode);
       showToast(`Loaded ${match.shortCode} (${match.fileName}) for printing`, 'success');
     } else {
       showToast(`No document found with token code "${query}".`, 'info');
@@ -73,8 +131,9 @@ export default function App() {
   };
 
   const handleOpenShopView = (jobId: string) => {
-    setSelectedJobId(jobId);
-    setCurrentView('shop');
+    const match = api.getJobById(jobId);
+    setSelectedJobId(match ? match.id : jobId);
+    navigate('shop', match?.shortCode || jobId);
   };
 
   const handleUpdateStatus = (
@@ -88,7 +147,7 @@ export default function App() {
       if (status === 'printing') {
         showToast(`Spooling ${updated.shortCode} to browser print wizard...`, 'info');
       } else if (status === 'wiped') {
-        showToast(`Document ${updated.shortCode} was permanently auto-wiped after printing.`, 'success');
+        showToast(`Document ${updated.shortCode} permanently erased from memory.`, 'success');
       } else if (status === 'ready') {
         showToast(`Job ${updated.shortCode} marked ready for pickup!`, 'success');
       }
@@ -99,7 +158,7 @@ export default function App() {
     const success = api.deleteJob(jobId);
     if (success) {
       const updated = reloadJobs();
-      showToast('Document wiped and erased from storage.', 'info');
+      showToast('Document wiped and erased from server & storage.', 'info');
       if (selectedJobId === jobId) {
         setSelectedJobId(updated.length > 0 ? updated[0].id : null);
       }
@@ -109,7 +168,8 @@ export default function App() {
   const handleLogout = () => {
     api.logout();
     reloadJobs();
-    showToast('Admin panel locked.', 'info');
+    navigate('shop');
+    showToast('Admin panel locked. Switched to Shop Terminal.', 'info');
   };
 
   const activeJob = jobs.find((j) => j.id === selectedJobId) || jobs[0] || null;
@@ -130,48 +190,48 @@ export default function App() {
         </div>
       )}
 
-      {/* Top Navbar */}
+      {/* Top Navbar: Role-separated */}
       <Navbar
-        currentView={currentView}
-        onViewChange={(v) => {
-          setCurrentView(v);
-          reloadJobs();
-        }}
+        currentRoute={currentRoute}
+        onNavigate={navigate}
         activeJobId={selectedJobId}
+        activeJobShortCode={activeJob?.shortCode}
         onSearchJob={handleSearchJob}
         queueCount={jobs.filter((j) => j.status === 'ready' || j.status === 'in_queue').length}
+        isAdminAuthenticated={api.checkAuth()}
+        onLogoutAdmin={handleLogout}
       />
 
       {/* Main View Router */}
       <main className="flex-1 pb-16">
-        {currentView === 'admin' && (
+        {currentRoute === 'admin' && (
           <ProtectedRoute onLoginSuccess={() => reloadJobs()}>
             <AdminUploadPage
-              onOpenShopView={handleOpenShopView}
               onLogout={handleLogout}
             />
           </ProtectedRoute>
         )}
 
-        {currentView === 'shop' && (
+        {currentRoute === 'shop' && (
           <ShopPrintPage
             job={activeJob}
             onUpdateStatus={handleUpdateStatus}
-            onAdminLoginClick={() => setCurrentView('admin')}
+            onNavigateToQueue={() => navigate('queue')}
+            onSearchJob={handleSearchJob}
           />
         )}
 
-        {currentView === 'queue' && (
+        {currentRoute === 'queue' && (
           <ShopQueueDashboard
             jobs={jobs}
             onSelectJob={handleOpenShopView}
             onUpdateStatus={(id, st) => handleUpdateStatus(id, st)}
             onDeleteJob={handleDeleteJob}
-            onNewJobClick={() => setCurrentView('admin')}
+            onNewJobClick={() => navigate('admin')}
           />
         )}
 
-        {currentView === 'test-pattern' && (
+        {currentRoute === 'test-pattern' && (
           <PrintTestPatternPage />
         )}
       </main>
@@ -180,10 +240,10 @@ export default function App() {
       <footer className="no-print border-t border-slate-200/80 bg-white py-6 text-center text-xs text-slate-400">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div>
-            <strong>PrintBridge</strong> · Private Personal Printing Service (Bangladesh)
+            <strong>BD Print Bridge</strong> · Private Personal Printing Service (Bangladesh)
           </div>
           <div className="text-[11px] text-slate-400">
-            Zero Local Downloads · Automatic Memory Wipe on Print Spool
+            Zero Local Downloads · Automatic File Purge on Print Spool
           </div>
         </div>
       </footer>

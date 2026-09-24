@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ZoomIn, ZoomOut, RotateCw, Maximize2, Minimize2, ChevronLeft, ChevronRight, Eye, FileText, CheckCircle2 } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { ZoomIn, ZoomOut, RotateCw, Maximize2, Minimize2, ChevronLeft, ChevronRight, Eye, FileText, CheckCircle2, ExternalLink } from 'lucide-react';
 import { ColorMode, DocumentPage, Orientation, PaperSize } from '../types/print';
 
 interface DocumentPreviewProps {
@@ -36,6 +36,30 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   const totalPages = Math.max(1, pages.length);
   const currentPage = pages[currentPageIndex] || pages[0];
 
+  // Convert base64 dataUrl to Blob URL for clean browser embedding without data URI sandbox blocks
+  const blobUrl = useMemo(() => {
+    if (!fileDataUrl) return '';
+    if (fileDataUrl.startsWith('blob:')) return fileDataUrl;
+    if (fileDataUrl.startsWith('data:')) {
+      try {
+        const parts = fileDataUrl.split(',');
+        const mime = parts[0].match(/:(.*?);/)?.[1] || 'application/pdf';
+        const bstr = atob(parts[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        const blob = new Blob([u8arr], { type: mime });
+        return URL.createObjectURL(blob);
+      } catch (e) {
+        console.error('Error generating Blob URL from dataUrl:', e);
+        return fileDataUrl;
+      }
+    }
+    return fileDataUrl;
+  }, [fileDataUrl]);
+
   const handleZoomIn = () => setZoomLevel((prev) => Math.min(prev + 15, 175));
   const handleZoomOut = () => setZoomLevel((prev) => Math.max(prev - 15, 60));
   const handleResetZoom = () => setZoomLevel(100);
@@ -54,6 +78,10 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
     return 'none';
   };
 
+  const isExtractedImagePage =
+    !!currentPage?.previewUrl &&
+    (currentPage.previewUrl.startsWith('data:image/') || currentPage.previewUrl.startsWith('blob:'));
+
   return (
     <div
       className={`flex flex-col bg-slate-900/95 rounded-2xl border border-slate-800 shadow-xl overflow-hidden transition-all ${
@@ -62,7 +90,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
     >
       {/* Top Toolbar */}
       <div className="flex items-center justify-between px-4 py-2.5 bg-slate-950/80 border-b border-slate-800/80 text-xs text-slate-300">
-        <div className="flex items-center gap-2 truncate max-w-[260px] sm:max-w-md">
+        <div className="flex items-center gap-2 truncate max-w-[240px] sm:max-w-md">
           <FileText className="w-4 h-4 text-indigo-400 shrink-0" />
           <span className="font-medium text-slate-200 truncate">{fileName || 'Untitled Document'}</span>
           <span className="text-slate-500 font-mono text-[11px] shrink-0">
@@ -136,6 +164,21 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
             <RotateCw className="w-3.5 h-3.5" />
           </button>
 
+          {/* Pop out into new tab for full inspection */}
+          {(blobUrl || isExtractedImagePage) && (
+            <button
+              type="button"
+              onClick={() => {
+                const target = isExtractedImagePage ? currentPage.previewUrl : blobUrl;
+                if (target) window.open(target, '_blank');
+              }}
+              className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 bg-slate-800/80 border border-slate-700/60 rounded-lg flex items-center gap-1"
+              title="Open full document in new tab"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+            </button>
+          )}
+
           {allowFullscreen && (
             <button
               type="button"
@@ -151,38 +194,77 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
 
       {/* Main Preview Viewport */}
       <div className="relative flex-1 overflow-auto p-4 sm:p-8 flex items-center justify-center min-h-[380px] max-h-[620px] bg-slate-950/60">
-        <div
-          className="transition-transform duration-200 ease-out origin-center select-none"
-          style={{
-            transform: `scale(${zoomLevel / 100}) rotate(${rotation}deg)`,
-          }}
-        >
-          {/* Printable Page Sheet Container */}
+        {!fileName && pages.length === 0 ? (
+          <div className="text-center p-8 text-slate-400 space-y-3">
+            <div className="w-14 h-14 rounded-2xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-center mx-auto text-slate-500">
+              <FileText className="w-7 h-7 text-indigo-400" />
+            </div>
+            <h4 className="text-sm font-semibold text-slate-200">No Document Uploaded</h4>
+            <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
+              Upload a document above to see high-fidelity preview and print simulation.
+            </p>
+          </div>
+        ) : (
           <div
-            className="printable-page relative bg-white text-slate-900 rounded-sm shadow-2xl overflow-hidden transition-all duration-300"
+            className="transition-transform duration-200 ease-out origin-center select-none"
             style={{
-              width: isLandscape ? '760px' : '560px',
-              minHeight: isLandscape ? '540px' : '740px',
-              filter: getGrayscaleFilter(),
+              transform: `scale(${zoomLevel / 100}) rotate(${rotation}deg)`,
             }}
           >
-            {/* If we have direct page HTML snippet */}
-            {currentPage?.htmlContent ? (
+            {/* Printable Page Sheet Container */}
+            <div
+              className="printable-page relative bg-white text-slate-900 rounded-sm shadow-2xl overflow-hidden transition-all duration-300"
+              style={{
+                width: isLandscape ? '760px' : '560px',
+                minHeight: isLandscape ? '540px' : '740px',
+                filter: fileType === 'pdf' && !isExtractedImagePage ? 'none' : getGrayscaleFilter(),
+              }}
+            >
+            {/* 1. Scanned PDF Page / Image Preview */}
+            {isExtractedImagePage ? (
+              <div className="w-full h-full flex items-center justify-center p-4 bg-white min-h-[540px] sm:min-h-[700px]">
+                <img
+                  src={currentPage.previewUrl}
+                  alt={currentPage.title || fileName || 'Document preview'}
+                  className="printable-image max-w-full max-h-full object-contain mx-auto"
+                  style={{ filter: getGrayscaleFilter() }}
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            ) : fileType === 'image' && fileDataUrl ? (
+              /* 2. Direct Image File Preview */
+              <div className="w-full h-full flex items-center justify-center p-4 bg-white min-h-[540px] sm:min-h-[700px]">
+                <img
+                  src={fileDataUrl}
+                  alt={fileName || 'Document preview'}
+                  className="printable-image max-w-full max-h-full object-contain mx-auto"
+                  style={{ filter: getGrayscaleFilter() }}
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            ) : fileType === 'pdf' && (blobUrl || fileDataUrl) ? (
+              /* 3. Real Vector PDF Document Object/Iframe with Blob URL */
+              <div className="w-full h-full min-h-[540px] sm:min-h-[700px] flex flex-col bg-slate-100">
+                <object
+                  data={`${blobUrl || fileDataUrl}#toolbar=0&navpanes=0`}
+                  type="application/pdf"
+                  className="w-full h-full min-h-[540px] sm:min-h-[700px] border-0 bg-white"
+                >
+                  <iframe
+                    src={`${blobUrl || fileDataUrl}#toolbar=0&navpanes=0`}
+                    title={fileName || 'PDF Preview'}
+                    className="w-full h-full min-h-[540px] sm:min-h-[700px] border-0 bg-white"
+                  />
+                </object>
+              </div>
+            ) : currentPage?.htmlContent ? (
+              /* 4. Formatted Document / Text */
               <div
                 className="w-full h-full text-left"
                 dangerouslySetInnerHTML={{ __html: currentPage.htmlContent }}
               />
-            ) : fileDataUrl ? (
-              <div className="w-full h-full flex items-center justify-center p-4">
-                <img
-                  src={fileDataUrl}
-                  alt={fileName || 'Document preview'}
-                  className="printable-image max-w-full max-h-full object-contain"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
             ) : (
-              /* Generic document fallback presentation */
+              /* 5. Generic document fallback presentation */
               <div className="p-8 space-y-4">
                 <div className="flex items-center justify-between border-b pb-4 border-slate-200">
                   <div className="space-y-1">
@@ -208,6 +290,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
             )}
           </div>
         </div>
+        )}
       </div>
 
       {/* Bottom Status / Mode bar */}

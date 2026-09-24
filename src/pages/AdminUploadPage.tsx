@@ -29,7 +29,6 @@ import {
   PrintSettings,
   PricingBreakdown,
 } from '../types/print';
-import { SAMPLE_DOCUMENTS } from '../data/sampleDocuments';
 import { calculatePrintPricing } from '../services/pricingService';
 import { api } from '../services/api';
 import { FileDropzone } from '../components/FileDropzone';
@@ -39,7 +38,7 @@ import { ShareSuccessCard } from '../components/ShareSuccessCard';
 import { QrCodeView } from '../components/QrCodeView';
 
 interface AdminUploadPageProps {
-  onOpenShopView: (jobId: string) => void;
+  onOpenShopView?: (jobId: string) => void;
   onLogout: () => void;
 }
 
@@ -48,17 +47,17 @@ export const AdminUploadPage: React.FC<AdminUploadPageProps> = ({
   onLogout,
 }) => {
   const [currency, setCurrency] = useState<Currency>('BDT');
-  const initialSample = SAMPLE_DOCUMENTS[0]; // CV
-
-  // Loaded File State
-  const [fileName, setFileName] = useState<string>(initialSample.name);
+  // Loaded File State (starts empty with no dummy file preloaded)
+  const [fileName, setFileName] = useState<string>('');
   const [fileType, setFileType] = useState<'pdf' | 'image' | 'document' | 'text'>('pdf');
-  const [mimeType, setMimeType] = useState<string>(initialSample.mimeType);
-  const [fileSize, setFileSize] = useState<number>(initialSample.size);
+  const [mimeType, setMimeType] = useState<string>('');
+  const [fileSize, setFileSize] = useState<number>(0);
   const [fileDataUrl, setFileDataUrl] = useState<string>('');
-  const [pageCount, setPageCount] = useState<number>(initialSample.pageCount);
-  const [pages, setPages] = useState<DocumentPage[]>(initialSample.pages);
+  const [pageCount, setPageCount] = useState<number>(1);
+  const [pages, setPages] = useState<DocumentPage[]>([]);
   const [currentPageIndex, setCurrentPageIndex] = useState<number>(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [rawFile, setRawFile] = useState<File | undefined>(undefined);
 
   // Settings
   const [settings, setSettings] = useState<PrintSettings>({
@@ -109,6 +108,7 @@ export const AdminUploadPage: React.FC<AdminUploadPageProps> = ({
     fileDataUrl: string;
     pageCount: number;
     pages: DocumentPage[];
+    rawFile?: File;
     suggestedSettings?: Partial<PrintSettings>;
   }) => {
     setFileName(data.fileName);
@@ -118,7 +118,9 @@ export const AdminUploadPage: React.FC<AdminUploadPageProps> = ({
     setFileDataUrl(data.fileDataUrl);
     setPageCount(data.pageCount);
     setPages(data.pages);
+    setRawFile(data.rawFile);
     setCurrentPageIndex(0);
+    setErrorMessage(null);
 
     if (data.suggestedSettings) {
       setSettings((prev) => ({
@@ -135,33 +137,42 @@ export const AdminUploadPage: React.FC<AdminUploadPageProps> = ({
   };
 
   const handleGenerateLink = () => {
+    if (!fileName) {
+      setErrorMessage('Please drop or select a document above before generating a print link.');
+      return;
+    }
+    setErrorMessage(null);
+
     const now = new Date();
     const expiresAt = new Date(now.getTime() + expirationHours * 60 * 60 * 1000).toISOString();
 
-    const created = api.uploadDocument({
-      fileName,
-      fileType,
-      mimeType,
-      fileSize,
-      fileDataUrl,
-      pageCount,
-      pages,
-      expiresAt,
-      status: 'ready',
-      pinCode: pinCode.trim() || undefined,
-      autoDeleteAfterPrint,
-      customerName: customerName.trim() || 'Joy Basak',
-      customerPhone: customerPhone.trim() || undefined,
-      settings,
-      pricing,
-    });
+    const created = api.uploadDocument(
+      {
+        fileName,
+        fileType,
+        mimeType,
+        fileSize,
+        fileDataUrl,
+        pageCount,
+        pages,
+        expiresAt,
+        status: 'ready',
+        pinCode: pinCode.trim() || undefined,
+        autoDeleteAfterPrint,
+        customerName: customerName.trim() || 'Joy Basak',
+        customerPhone: customerPhone.trim() || undefined,
+        settings,
+        pricing,
+      },
+      rawFile
+    );
 
     setGeneratedJob(created);
     refreshJobs();
   };
 
   const handleCopyLinkForJob = (job: PrintJob) => {
-    const link = `${window.location.origin}${window.location.pathname}?job=${job.shortCode}`;
+    const link = `${window.location.origin}/print/${job.shortCode}`;
     navigator.clipboard.writeText(link);
     setCopiedCode(job.shortCode);
     setTimeout(() => setCopiedCode(null), 2000);
@@ -221,15 +232,16 @@ export const AdminUploadPage: React.FC<AdminUploadPageProps> = ({
         </div>
       </div>
 
-      {/* 2. Success Hub (If Generated) or Upload Workflow */}
-      {generatedJob ? (
+      {/* 2. Success Hub (If Generated) */}
+      {generatedJob && (
         <ShareSuccessCard
           job={generatedJob}
-          onOpenShopView={onOpenShopView}
           onNewUpload={() => setGeneratedJob(null)}
         />
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      )}
+
+      {/* 3. Upload Workflow */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* Left Column: Upload & Form Config (6 cols) */}
           <div className="lg:col-span-6 space-y-6">
@@ -284,13 +296,19 @@ export const AdminUploadPage: React.FC<AdminUploadPageProps> = ({
             />
 
             {/* Submit Button */}
+            {errorMessage && (
+              <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-xl font-medium animate-in fade-in">
+                ⚠️ {errorMessage}
+              </div>
+            )}
             <button
               type="button"
               onClick={handleGenerateLink}
-              className="w-full py-4 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm font-extrabold shadow-lg shadow-indigo-500/25 transition-all flex items-center justify-center gap-2 group hover:scale-[1.01]"
+              disabled={!fileName}
+              className="w-full py-4 px-6 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl text-sm font-extrabold shadow-lg shadow-indigo-500/25 transition-all flex items-center justify-center gap-2 group hover:scale-[1.01]"
             >
               <QrCode className="w-5 h-5 text-indigo-200 group-hover:scale-110 transition-transform" />
-              <span>Generate Shopkeeper Print Link & QR</span>
+              <span>{fileName ? 'Generate Shopkeeper Print Link & QR' : 'Upload Document to Generate Link'}</span>
               <ArrowRight className="w-4 h-4 text-indigo-300" />
             </button>
           </div>
@@ -326,7 +344,6 @@ export const AdminUploadPage: React.FC<AdminUploadPageProps> = ({
             </div>
           </div>
         </div>
-      )}
 
       {/* 3. Active Shared Links & Jobs Dashboard */}
       <div className="pt-8 border-t border-slate-200/80 space-y-4">
@@ -351,7 +368,7 @@ export const AdminUploadPage: React.FC<AdminUploadPageProps> = ({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {activeJobs.map((job) => {
-              const shareLink = `${window.location.origin}${window.location.pathname}?job=${job.shortCode}`;
+              const shareLink = `${window.location.origin}/print/${job.shortCode}`;
               const isWiped = job.status === 'wiped';
 
               return (
@@ -429,11 +446,12 @@ export const AdminUploadPage: React.FC<AdminUploadPageProps> = ({
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
-                        onClick={() => onOpenShopView(job.id)}
+                        onClick={() => window.open(`/print/${job.shortCode}`, '_blank')}
                         className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] flex items-center gap-1 transition-colors"
+                        title="Preview in new tab without leaving admin"
                       >
-                        <Printer className="w-3 h-3" />
-                        <span>Open</span>
+                        <ExternalLink className="w-3 h-3" />
+                        <span>Preview</span>
                       </button>
 
                       <button
@@ -482,7 +500,7 @@ export const AdminUploadPage: React.FC<AdminUploadPageProps> = ({
 
             <div className="flex justify-center py-2">
               <QrCodeView
-                value={`${window.location.origin}${window.location.pathname}?job=${activeQrModalJob.shortCode}`}
+                value={`${window.location.origin}/print/${activeQrModalJob.shortCode}`}
                 size={180}
               />
             </div>
