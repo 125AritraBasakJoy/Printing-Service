@@ -45,6 +45,41 @@ function safeSaveJobs(jobs: PrintJob[]) {
   }
 }
 
+// Hydrate a backend job record into the full frontend PrintJob shape.
+// The server omits client-only fields (pricing, preview pages, data URLs).
+function hydrateRemoteJob(remoteJob: any): PrintJob {
+  const fileUrl = `${BACKEND_URL}${remoteJob.fileUrl}`;
+  const settings: PrintSettings = {
+    copies: 1,
+    colorMode: 'bw',
+    paperSize: 'A4',
+    duplex: 'single',
+    orientation: 'portrait',
+    pageRange: 'all',
+    finishing: {
+      staple: 'none',
+      binding: 'none',
+      lamination: false,
+      paperWeight: 'standard_75gsm',
+    },
+    notes: '',
+    ...(remoteJob.settings || {}),
+  };
+  return {
+    ...remoteJob,
+    settings,
+    fileDataUrl: fileUrl,
+    pages: [
+      {
+        pageNumber: 1,
+        title: remoteJob.fileName,
+        previewUrl: fileUrl,
+      },
+    ],
+    pricing: remoteJob.pricing || calculatePrintPricing(remoteJob.pageCount || 1, settings, 'BDT'),
+  };
+}
+
 export const api = {
   // Authentication
   checkAuth(): boolean {
@@ -73,6 +108,8 @@ export const api = {
   },
 
   logout(): void {
+    // Clear the in-memory cache so locked-out sessions can't read job data
+    memoryJobsCache = [];
     localStorage.removeItem(AUTH_KEY);
   },
 
@@ -85,34 +122,32 @@ export const api = {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       let parsed: PrintJob[] = raw ? JSON.parse(raw) : [];
-      
-      // Merge with memory cache to preserve full data URLs
+
+      // The memory cache is ONLY a fallback to restore full base64 data URLs
+      // for jobs that still exist in persisted storage. It must never
+      // resurrect jobs that were deleted or wiped.
       if (memoryJobsCache.length > 0) {
         const memoryMap = new Map(memoryJobsCache.map((j) => [j.id, j]));
         parsed = parsed.map((j) => {
           const mem = memoryMap.get(j.id);
-          return mem || j;
+          return mem ? { ...j, fileDataUrl: mem.fileDataUrl || j.fileDataUrl } : j;
         });
-        // Include any memory-only jobs
-        for (const memJob of memoryJobsCache) {
-          if (!parsed.some((p) => p.id === memJob.id)) {
-            parsed.push(memJob);
-          }
-        }
       }
 
-      // Filter out any legacy dummy seed jobs
+      // Drop expired jobs (mirrors the server's TTL cleanup) and legacy seed jobs
+      const now = Date.now();
       const cleaned = parsed.filter(
         (j) =>
           j.id !== 'doc_resume_bangladesh_01' &&
           j.id !== 'doc_invoice_sample_02' &&
           j.shortCode !== 'PRN-9482' &&
-          j.shortCode !== 'PRN-3820'
+          j.shortCode !== 'PRN-3820' &&
+          !(j.expiresAt && new Date(j.expiresAt).getTime() < now)
       );
       return cleaned;
     } catch (err) {
       console.error('Error fetching jobs:', err);
-      return memoryJobsCache;
+      return [...memoryJobsCache];
     }
   },
 
@@ -138,19 +173,7 @@ export const api = {
       if (!res.ok) return null;
       const data = await res.json();
       if (data.success && data.job) {
-        const remoteJob = data.job;
-        const fileUrl = `${BACKEND_URL}${remoteJob.fileUrl}`;
-        const hydratedJob: PrintJob = {
-          ...remoteJob,
-          fileDataUrl: fileUrl,
-          pages: [
-            {
-              pageNumber: 1,
-              title: remoteJob.fileName,
-              previewUrl: fileUrl,
-            },
-          ],
-        };
+        const hydratedJob = hydrateRemoteJob(data.job);
         const currentList = this.getJobs();
         safeSaveJobs([hydratedJob, ...currentList.filter((j) => j.id !== hydratedJob.id)]);
         return hydratedJob;
@@ -159,6 +182,50 @@ export const api = {
       console.error('[API] Error fetching remote job from backend:', err);
     }
     return local;
+  },
+
+  // Fetch the live job list from the backend (source of truth for the queue).
+  // Falls back to local storage when the backend is unreachable.
+  async fetchJobs(): Promise<PrintJob[]> {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/jobs`);
+      if (!res.ok) throw new Error(`Backend responded with ${res.status}`);
+      const data = await res.json();
+      if (!data.success || !Array.isArray(data.jobs)) throw new Error('Malformed jobs response');
+
+      const remoteJobs: PrintJob[] = data.jobs.map(hydrateRemoteJob);
+      const localJobs = this.getJobs();
+      const localByCode = new Map(localJobs.map((j) => [j.shortCode, j]));
+
+      const merged: PrintJob[] = remoteJobs.map((remote) => {
+        const local = localByCode.get(remote.shortCode);
+        if (!local) return remote;
+        // Local record keeps rich client-only data (pricing currency, base64
+        // preview); the server wins for live operational state.
+        return {
+          ...local,
+          status: remote.status,
+          history: remote.history,
+          printedCopiesCount: remote.printedCopiesCount,
+          expiresAt: remote.expiresAt,
+          fileDataUrl: local.fileDataUrl || remote.fileDataUrl,
+          pages: local.pages?.length ? local.pages : remote.pages,
+        };
+      });
+
+      // Keep jobs that only exist locally (e.g. uploaded while offline)
+      const remoteCodes = new Set(merged.map((j) => j.shortCode));
+      for (const local of localJobs) {
+        if (!remoteCodes.has(local.shortCode)) merged.push(local);
+      }
+
+      merged.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+      safeSaveJobs(merged);
+      return merged;
+    } catch (err) {
+      console.warn('[API] Backend job sync unavailable, serving local jobs:', err);
+      return this.getJobs();
+    }
   },
 
   // Upload new document
@@ -197,6 +264,7 @@ export const api = {
         const blob = new Blob([data.fileDataUrl || 'Sample Document'], { type: data.mimeType || 'text/plain' });
         formData.append('file', blob, data.fileName);
       }
+      formData.append('shortCode', newJob.shortCode); // keep server & local identities in sync
       formData.append('copies', String(data.settings.copies || 1));
       formData.append('colorMode', data.settings.colorMode);
       formData.append('paperSize', data.settings.paperSize);

@@ -119,6 +119,19 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [reloadJobs, parseCurrentUrl]);
 
+  // Keep the queue dashboard backed by live server state instead of
+  // browser-local history (falls back to local data when offline)
+  useEffect(() => {
+    if (currentRoute !== 'queue') return;
+    let cancelled = false;
+    api.fetchJobs().then((list) => {
+      if (!cancelled) setJobs(list);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentRoute]);
+
   const showToast = (message: string, type: 'info' | 'success' = 'success') => {
     setNotification({ message, type });
     setTimeout(() => {

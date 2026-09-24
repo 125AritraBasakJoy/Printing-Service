@@ -132,7 +132,15 @@ router.post('/upload', authMiddleware, upload.single('file'), (req, res) => {
     } = req.body;
 
     const id = `job_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const shortCode = generateShortCode();
+
+    // Prefer the client-supplied shortcode so the browser's local record and
+    // the server record share one identity (keeps the queue in sync).
+    let shortCode = /^PRN-[2-9A-HJ-NP-Z]{4}$/.test(req.body.shortCode || '')
+      ? req.body.shortCode
+      : generateShortCode();
+    while (findJob(shortCode)) {
+      shortCode = generateShortCode(); // collision guard
+    }
     const now = new Date();
     const expHoursNum = parseInt(expirationHours, 10) || 24;
     const expiresAt = new Date(now.getTime() + expHoursNum * 60 * 60 * 1000).toISOString();
