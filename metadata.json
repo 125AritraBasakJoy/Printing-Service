@@ -1,0 +1,6 @@
+{
+  "name": "Personal Printing Service",
+  "description": "Upload documents, configure print settings, generate instant shareable links & QR codes for physical print shops with 1-click browser printing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
