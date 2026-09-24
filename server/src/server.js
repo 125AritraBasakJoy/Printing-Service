@@ -5,6 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { router as printRoutes } from './routes/printRoutes.js';
+import { router as driveRoutes } from './routes/driveRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,6 +47,9 @@ app.get('/api/health', (req, res) => {
 
 // Mount Print Routes
 app.use('/api', printRoutes);
+
+// Google Drive folder import routes
+app.use('/api', driveRoutes);
 
 // Serve the built frontend (single-origin deployment, e.g. Render).
 // The React build lives in <repo-root>/dist and is gitignored, so the

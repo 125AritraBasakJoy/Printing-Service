@@ -1,0 +1,604 @@
+[
+  {
+    "id": "job_1790241590556_khyu4",
+    "shortCode": "PRN-P6GQ",
+    "fileName": "nid-6908831776.pdf",
+    "fileType": "pdf",
+    "mimeType": "application/pdf",
+    "fileSize": 110025,
+    "filePath": "/home/joy/Printing-Service/server/src/uploads/drive-1790241589126-827512-nid-6908831776.pdf",
+    "fileUrl": "/api/jobs/PRN-P6GQ/file",
+    "pageCount": 1,
+    "uploadedAt": "2026-09-24T09:19:50.556Z",
+    "expiresAt": "2026-10-01T09:19:50.556Z",
+    "status": "ready",
+    "autoDeleteAfterPrint": false,
+    "pinCode": "",
+    "customerName": "Joy Basak",
+    "customerPhone": "",
+    "driveFileId": "12kHQf0uhHRgU776OUC5-6iQt-MhkvcHo",
+    "drivePath": "/NID",
+    "settings": {
+      "copies": 1,
+      "colorMode": "bw",
+      "paperSize": "A4",
+      "duplex": "single",
+      "orientation": "portrait",
+      "pageRange": "all",
+      "finishing": {
+        "staple": "none",
+        "binding": "none",
+        "lamination": false,
+        "paperWeight": "standard_75gsm"
+      },
+      "notes": "Imported from Google Drive (NID)"
+    },
+    "printedCopiesCount": 0,
+    "history": [
+      {
+        "timestamp": "2026-09-24T09:19:50.556Z",
+        "action": "Imported from Google Drive folder",
+        "actor": "admin"
+      }
+    ]
+  },
+  {
+    "id": "job_1790241592155_3vu6p",
+    "shortCode": "PRN-GJNW",
+    "fileName": "BRAC IT __ Pay Slip_December_2025.pdf",
+    "fileType": "pdf",
+    "mimeType": "application/pdf",
+    "fileSize": 109292,
+    "filePath": "/home/joy/Printing-Service/server/src/uploads/drive-1790241590558-297985-BRAC_IT____Pay_Slip_December_2025.pdf",
+    "fileUrl": "/api/jobs/PRN-GJNW/file",
+    "pageCount": 1,
+    "uploadedAt": "2026-09-24T09:19:52.155Z",
+    "expiresAt": "2026-10-01T09:19:52.155Z",
+    "status": "ready",
+    "autoDeleteAfterPrint": false,
+    "pinCode": "",
+    "customerName": "Joy Basak",
+    "customerPhone": "",
+    "driveFileId": "19OS-0V0bUETY7mZcmLOjbWqg1gkFtez0",
+    "drivePath": "/Pay Slip/2025",
+    "settings": {
+      "copies": 1,
+      "colorMode": "bw",
+      "paperSize": "A4",
+      "duplex": "single",
+      "orientation": "portrait",
+      "pageRange": "all",
+      "finishing": {
+        "staple": "none",
+        "binding": "none",
+        "lamination": false,
+        "paperWeight": "standard_75gsm"
+      },
+      "notes": "Imported from Google Drive (Pay Slip/2025)"
+    },
+    "printedCopiesCount": 0,
+    "history": [
+      {
+        "timestamp": "2026-09-24T09:19:52.155Z",
+        "action": "Imported from Google Drive folder",
+        "actor": "admin"
+      }
+    ]
+  },
+  {
+    "id": "job_1790241593938_k7lhg",
+    "shortCode": "PRN-CEYP",
+    "fileName": "BRAC IT __ Pay Slip_November_2025.pdf",
+    "fileType": "pdf",
+    "mimeType": "application/pdf",
+    "fileSize": 109584,
+    "filePath": "/home/joy/Printing-Service/server/src/uploads/drive-1790241592157-994884-BRAC_IT____Pay_Slip_November_2025.pdf",
+    "fileUrl": "/api/jobs/PRN-CEYP/file",
+    "pageCount": 1,
+    "uploadedAt": "2026-09-24T09:19:53.938Z",
+    "expiresAt": "2026-10-01T09:19:53.938Z",
+    "status": "ready",
+    "autoDeleteAfterPrint": false,
+    "pinCode": "",
+    "customerName": "Joy Basak",
+    "customerPhone": "",
+    "driveFileId": "1z7-xG9zy_3xn0Yyx-RhgjFLwVBORPolI",
+    "drivePath": "/Pay Slip/2025",
+    "settings": {
+      "copies": 1,
+      "colorMode": "bw",
+      "paperSize": "A4",
+      "duplex": "single",
+      "orientation": "portrait",
+      "pageRange": "all",
+      "finishing": {
+        "staple": "none",
+        "binding": "none",
+        "lamination": false,
+        "paperWeight": "standard_75gsm"
+      },
+      "notes": "Imported from Google Drive (Pay Slip/2025)"
+    },
+    "printedCopiesCount": 0,
+    "history": [
+      {
+        "timestamp": "2026-09-24T09:19:53.938Z",
+        "action": "Imported from Google Drive folder",
+        "actor": "admin"
+      }
+    ]
+  },
+  {
+    "id": "job_1790241595702_njsn5",
+    "shortCode": "PRN-Y3K6",
+    "fileName": "BRAC IT __ Pay Slip_April_2026.pdf",
+    "fileType": "pdf",
+    "mimeType": "application/pdf",
+    "fileSize": 109023,
+    "filePath": "/home/joy/Printing-Service/server/src/uploads/drive-1790241593939-802481-BRAC_IT____Pay_Slip_April_2026.pdf",
+    "fileUrl": "/api/jobs/PRN-Y3K6/file",
+    "pageCount": 1,
+    "uploadedAt": "2026-09-24T09:19:55.702Z",
+    "expiresAt": "2026-10-01T09:19:55.702Z",
+    "status": "ready",
+    "autoDeleteAfterPrint": false,
+    "pinCode": "",
+    "customerName": "Joy Basak",
+    "customerPhone": "",
+    "driveFileId": "1wdz57lFDBDKUrN5gh2el5i-hPEh2xm9f",
+    "drivePath": "/Pay Slip/2026",
+    "settings": {
+      "copies": 1,
+      "colorMode": "bw",
+      "paperSize": "A4",
+      "duplex": "single",
+      "orientation": "portrait",
+      "pageRange": "all",
+      "finishing": {
+        "staple": "none",
+        "binding": "none",
+        "lamination": false,
+        "paperWeight": "standard_75gsm"
+      },
+      "notes": "Imported from Google Drive (Pay Slip/2026)"
+    },
+    "printedCopiesCount": 0,
+    "history": [
+      {
+        "timestamp": "2026-09-24T09:19:55.702Z",
+        "action": "Imported from Google Drive folder",
+        "actor": "admin"
+      }
+    ]
+  },
+  {
+    "id": "job_1790241597441_a5e3t",
+    "shortCode": "PRN-P4AB",
+    "fileName": "BRAC IT __ Pay Slip_February_2026.pdf",
+    "fileType": "pdf",
+    "mimeType": "application/pdf",
+    "fileSize": 109734,
+    "filePath": "/home/joy/Printing-Service/server/src/uploads/drive-1790241595702-936636-BRAC_IT____Pay_Slip_February_2026.pdf",
+    "fileUrl": "/api/jobs/PRN-P4AB/file",
+    "pageCount": 1,
+    "uploadedAt": "2026-09-24T09:19:57.441Z",
+    "expiresAt": "2026-10-01T09:19:57.441Z",
+    "status": "ready",
+    "autoDeleteAfterPrint": false,
+    "pinCode": "",
+    "customerName": "Joy Basak",
+    "customerPhone": "",
+    "driveFileId": "1nME0DhYBvUBG9VLmFDrDHj9YEzYhOBh5",
+    "drivePath": "/Pay Slip/2026",
+    "settings": {
+      "copies": 1,
+      "colorMode": "bw",
+      "paperSize": "A4",
+      "duplex": "single",
+      "orientation": "portrait",
+      "pageRange": "all",
+      "finishing": {
+        "staple": "none",
+        "binding": "none",
+        "lamination": false,
+        "paperWeight": "standard_75gsm"
+      },
+      "notes": "Imported from Google Drive (Pay Slip/2026)"
+    },
+    "printedCopiesCount": 0,
+    "history": [
+      {
+        "timestamp": "2026-09-24T09:19:57.441Z",
+        "action": "Imported from Google Drive folder",
+        "actor": "admin"
+      }
+    ]
+  },
+  {
+    "id": "job_1790241599007_6moml",
+    "shortCode": "PRN-5974",
+    "fileName": "BRAC IT __ Pay Slip_January_2026.pdf",
+    "fileType": "pdf",
+    "mimeType": "application/pdf",
+    "fileSize": 109540,
+    "filePath": "/home/joy/Printing-Service/server/src/uploads/drive-1790241597441-955268-BRAC_IT____Pay_Slip_January_2026.pdf",
+    "fileUrl": "/api/jobs/PRN-5974/file",
+    "pageCount": 1,
+    "uploadedAt": "2026-09-24T09:19:59.007Z",
+    "expiresAt": "2026-10-01T09:19:59.007Z",
+    "status": "ready",
+    "autoDeleteAfterPrint": false,
+    "pinCode": "",
+    "customerName": "Joy Basak",
+    "customerPhone": "",
+    "driveFileId": "1hQJZW7T6lwpz9O7vvnmiFiYs4pq1bNMI",
+    "drivePath": "/Pay Slip/2026",
+    "settings": {
+      "copies": 1,
+      "colorMode": "bw",
+      "paperSize": "A4",
+      "duplex": "single",
+      "orientation": "portrait",
+      "pageRange": "all",
+      "finishing": {
+        "staple": "none",
+        "binding": "none",
+        "lamination": false,
+        "paperWeight": "standard_75gsm"
+      },
+      "notes": "Imported from Google Drive (Pay Slip/2026)"
+    },
+    "printedCopiesCount": 0,
+    "history": [
+      {
+        "timestamp": "2026-09-24T09:19:59.007Z",
+        "action": "Imported from Google Drive folder",
+        "actor": "admin"
+      }
+    ]
+  },
+  {
+    "id": "job_1790241600654_cmyvn",
+    "shortCode": "PRN-CN59",
+    "fileName": "BRAC IT __ Pay Slip_June_2026.pdf",
+    "fileType": "pdf",
+    "mimeType": "application/pdf",
+    "fileSize": 109120,
+    "filePath": "/home/joy/Printing-Service/server/src/uploads/drive-1790241599007-537550-BRAC_IT____Pay_Slip_June_2026.pdf",
+    "fileUrl": "/api/jobs/PRN-CN59/file",
+    "pageCount": 1,
+    "uploadedAt": "2026-09-24T09:20:00.654Z",
+    "expiresAt": "2026-10-01T09:20:00.654Z",
+    "status": "ready",
+    "autoDeleteAfterPrint": false,
+    "pinCode": "",
+    "customerName": "Joy Basak",
+    "customerPhone": "",
+    "driveFileId": "1Av8ltU6n8LUwbK8zht9vtisyV6u5oRki",
+    "drivePath": "/Pay Slip/2026",
+    "settings": {
+      "copies": 1,
+      "colorMode": "bw",
+      "paperSize": "A4",
+      "duplex": "single",
+      "orientation": "portrait",
+      "pageRange": "all",
+      "finishing": {
+        "staple": "none",
+        "binding": "none",
+        "lamination": false,
+        "paperWeight": "standard_75gsm"
+      },
+      "notes": "Imported from Google Drive (Pay Slip/2026)"
+    },
+    "printedCopiesCount": 0,
+    "history": [
+      {
+        "timestamp": "2026-09-24T09:20:00.654Z",
+        "action": "Imported from Google Drive folder",
+        "actor": "admin"
+      }
+    ]
+  },
+  {
+    "id": "job_1790241602048_b714w",
+    "shortCode": "PRN-DRXD",
+    "fileName": "BRAC IT __ Pay Slip_March_2026.pdf",
+    "fileType": "pdf",
+    "mimeType": "application/pdf",
+    "fileSize": 109313,
+    "filePath": "/home/joy/Printing-Service/server/src/uploads/drive-1790241600654-494083-BRAC_IT____Pay_Slip_March_2026.pdf",
+    "fileUrl": "/api/jobs/PRN-DRXD/file",
+    "pageCount": 1,
+    "uploadedAt": "2026-09-24T09:20:02.048Z",
+    "expiresAt": "2026-10-01T09:20:02.048Z",
+    "status": "ready",
+    "autoDeleteAfterPrint": false,
+    "pinCode": "",
+    "customerName": "Joy Basak",
+    "customerPhone": "",
+    "driveFileId": "1TQXn4Uu30OCm_Jnb-aIxA9AE8jJUIWLj",
+    "drivePath": "/Pay Slip/2026",
+    "settings": {
+      "copies": 1,
+      "colorMode": "bw",
+      "paperSize": "A4",
+      "duplex": "single",
+      "orientation": "portrait",
+      "pageRange": "all",
+      "finishing": {
+        "staple": "none",
+        "binding": "none",
+        "lamination": false,
+        "paperWeight": "standard_75gsm"
+      },
+      "notes": "Imported from Google Drive (Pay Slip/2026)"
+    },
+    "printedCopiesCount": 0,
+    "history": [
+      {
+        "timestamp": "2026-09-24T09:20:02.048Z",
+        "action": "Imported from Google Drive folder",
+        "actor": "admin"
+      }
+    ]
+  },
+  {
+    "id": "job_1790241603623_i3d1j",
+    "shortCode": "PRN-F2P3",
+    "fileName": "BRAC IT __ Pay Slip_May_2026.pdf",
+    "fileType": "pdf",
+    "mimeType": "application/pdf",
+    "fileSize": 109305,
+    "filePath": "/home/joy/Printing-Service/server/src/uploads/drive-1790241602049-25315-BRAC_IT____Pay_Slip_May_2026.pdf",
+    "fileUrl": "/api/jobs/PRN-F2P3/file",
+    "pageCount": 1,
+    "uploadedAt": "2026-09-24T09:20:03.623Z",
+    "expiresAt": "2026-10-01T09:20:03.623Z",
+    "status": "ready",
+    "autoDeleteAfterPrint": false,
+    "pinCode": "",
+    "customerName": "Joy Basak",
+    "customerPhone": "",
+    "driveFileId": "1MS1NE5JYOsc83I_NQXYme91Zc84ne_m1",
+    "drivePath": "/Pay Slip/2026",
+    "settings": {
+      "copies": 1,
+      "colorMode": "bw",
+      "paperSize": "A4",
+      "duplex": "single",
+      "orientation": "portrait",
+      "pageRange": "all",
+      "finishing": {
+        "staple": "none",
+        "binding": "none",
+        "lamination": false,
+        "paperWeight": "standard_75gsm"
+      },
+      "notes": "Imported from Google Drive (Pay Slip/2026)"
+    },
+    "printedCopiesCount": 0,
+    "history": [
+      {
+        "timestamp": "2026-09-24T09:20:03.623Z",
+        "action": "Imported from Google Drive folder",
+        "actor": "admin"
+      }
+    ]
+  },
+  {
+    "id": "job_1790241605093_jt76x",
+    "shortCode": "PRN-MM5W",
+    "fileName": "Account.2026-2027.2.pdf",
+    "fileType": "pdf",
+    "mimeType": "application/pdf",
+    "fileSize": 98989,
+    "filePath": "/home/joy/Printing-Service/server/src/uploads/drive-1790241603624-250329-Account.2026-2027.2.pdf",
+    "fileUrl": "/api/jobs/PRN-MM5W/file",
+    "pageCount": 1,
+    "uploadedAt": "2026-09-24T09:20:05.093Z",
+    "expiresAt": "2026-10-01T09:20:05.093Z",
+    "status": "ready",
+    "autoDeleteAfterPrint": false,
+    "pinCode": "",
+    "customerName": "Joy Basak",
+    "customerPhone": "",
+    "driveFileId": "1PcE_cDIjSWxtuxk0Ir9cBWF6sgBB5v2I",
+    "drivePath": "/Pay Slip",
+    "settings": {
+      "copies": 1,
+      "colorMode": "bw",
+      "paperSize": "A4",
+      "duplex": "single",
+      "orientation": "portrait",
+      "pageRange": "all",
+      "finishing": {
+        "staple": "none",
+        "binding": "none",
+        "lamination": false,
+        "paperWeight": "standard_75gsm"
+      },
+      "notes": "Imported from Google Drive (Pay Slip)"
+    },
+    "printedCopiesCount": 0,
+    "history": [
+      {
+        "timestamp": "2026-09-24T09:20:05.093Z",
+        "action": "Imported from Google Drive folder",
+        "actor": "admin"
+      }
+    ]
+  },
+  {
+    "id": "job_1790241606743_b7prt",
+    "shortCode": "PRN-T4YV",
+    "fileName": "BRAC IT __ Tax Statement_Breakdown.pdf",
+    "fileType": "pdf",
+    "mimeType": "application/pdf",
+    "fileSize": 96863,
+    "filePath": "/home/joy/Printing-Service/server/src/uploads/drive-1790241605094-741939-BRAC_IT____Tax_Statement_Breakdown.pdf",
+    "fileUrl": "/api/jobs/PRN-T4YV/file",
+    "pageCount": 2,
+    "uploadedAt": "2026-09-24T09:20:06.743Z",
+    "expiresAt": "2026-10-01T09:20:06.743Z",
+    "status": "ready",
+    "autoDeleteAfterPrint": false,
+    "pinCode": "",
+    "customerName": "Joy Basak",
+    "customerPhone": "",
+    "driveFileId": "1NLnZeaqwmA5h3EIgMIQvuJeiSyY-Qj4Y",
+    "drivePath": "/Pay Slip",
+    "settings": {
+      "copies": 1,
+      "colorMode": "bw",
+      "paperSize": "A4",
+      "duplex": "single",
+      "orientation": "portrait",
+      "pageRange": "all",
+      "finishing": {
+        "staple": "none",
+        "binding": "none",
+        "lamination": false,
+        "paperWeight": "standard_75gsm"
+      },
+      "notes": "Imported from Google Drive (Pay Slip)"
+    },
+    "printedCopiesCount": 0,
+    "history": [
+      {
+        "timestamp": "2026-09-24T09:20:06.743Z",
+        "action": "Imported from Google Drive folder",
+        "actor": "admin"
+      }
+    ]
+  },
+  {
+    "id": "job_1790241609333_q1jeb",
+    "shortCode": "PRN-EDRY",
+    "fileName": "BRAC IT __ Tax Statement.pdf",
+    "fileType": "pdf",
+    "mimeType": "application/pdf",
+    "fileSize": 348872,
+    "filePath": "/home/joy/Printing-Service/server/src/uploads/drive-1790241606744-78845-BRAC_IT____Tax_Statement.pdf",
+    "fileUrl": "/api/jobs/PRN-EDRY/file",
+    "pageCount": 1,
+    "uploadedAt": "2026-09-24T09:20:09.333Z",
+    "expiresAt": "2026-10-01T09:20:09.333Z",
+    "status": "ready",
+    "autoDeleteAfterPrint": false,
+    "pinCode": "",
+    "customerName": "Joy Basak",
+    "customerPhone": "",
+    "driveFileId": "1R5CdwDEI9pUMLEzYVUkFGaL48ICY4ePR",
+    "drivePath": "/Pay Slip",
+    "settings": {
+      "copies": 1,
+      "colorMode": "bw",
+      "paperSize": "A4",
+      "duplex": "single",
+      "orientation": "portrait",
+      "pageRange": "all",
+      "finishing": {
+        "staple": "none",
+        "binding": "none",
+        "lamination": false,
+        "paperWeight": "standard_75gsm"
+      },
+      "notes": "Imported from Google Drive (Pay Slip)"
+    },
+    "printedCopiesCount": 0,
+    "history": [
+      {
+        "timestamp": "2026-09-24T09:20:09.333Z",
+        "action": "Imported from Google Drive folder",
+        "actor": "admin"
+      }
+    ]
+  },
+  {
+    "id": "job_1790241611095_tuwdc",
+    "shortCode": "PRN-WYY2",
+    "fileName": "DPS.2026-2027.2.pdf",
+    "fileType": "pdf",
+    "mimeType": "application/pdf",
+    "fileSize": 173541,
+    "filePath": "/home/joy/Printing-Service/server/src/uploads/drive-1790241609334-544824-DPS.2026-2027.2.pdf",
+    "fileUrl": "/api/jobs/PRN-WYY2/file",
+    "pageCount": 2,
+    "uploadedAt": "2026-09-24T09:20:11.095Z",
+    "expiresAt": "2026-10-01T09:20:11.095Z",
+    "status": "ready",
+    "autoDeleteAfterPrint": false,
+    "pinCode": "",
+    "customerName": "Joy Basak",
+    "customerPhone": "",
+    "driveFileId": "1Loakeo1bFSZEPuPkmnhsGheEoVHHGGz_",
+    "drivePath": "/Pay Slip",
+    "settings": {
+      "copies": 1,
+      "colorMode": "bw",
+      "paperSize": "A4",
+      "duplex": "single",
+      "orientation": "portrait",
+      "pageRange": "all",
+      "finishing": {
+        "staple": "none",
+        "binding": "none",
+        "lamination": false,
+        "paperWeight": "standard_75gsm"
+      },
+      "notes": "Imported from Google Drive (Pay Slip)"
+    },
+    "printedCopiesCount": 0,
+    "history": [
+      {
+        "timestamp": "2026-09-24T09:20:11.095Z",
+        "action": "Imported from Google Drive folder",
+        "actor": "admin"
+      }
+    ]
+  },
+  {
+    "id": "job_1790241612898_0b29c",
+    "shortCode": "PRN-3U3D",
+    "fileName": "nbr_tin_certificate_663831200958.pdf",
+    "fileType": "pdf",
+    "mimeType": "application/pdf",
+    "fileSize": 226875,
+    "filePath": "/home/joy/Printing-Service/server/src/uploads/drive-1790241611095-143552-nbr_tin_certificate_663831200958.pdf",
+    "fileUrl": "/api/jobs/PRN-3U3D/file",
+    "pageCount": 1,
+    "uploadedAt": "2026-09-24T09:20:12.898Z",
+    "expiresAt": "2026-10-01T09:20:12.898Z",
+    "status": "ready",
+    "autoDeleteAfterPrint": false,
+    "pinCode": "",
+    "customerName": "Joy Basak",
+    "customerPhone": "",
+    "driveFileId": "17aV0Zc3joWjWxgtyIkgsE_FEmf1jVCgi",
+    "drivePath": "/TIN",
+    "settings": {
+      "copies": 1,
+      "colorMode": "bw",
+      "paperSize": "A4",
+      "duplex": "single",
+      "orientation": "portrait",
+      "pageRange": "all",
+      "finishing": {
+        "staple": "none",
+        "binding": "none",
+        "lamination": false,
+        "paperWeight": "standard_75gsm"
+      },
+      "notes": "Imported from Google Drive (TIN)"
+    },
+    "printedCopiesCount": 0,
+    "history": [
+      {
+        "timestamp": "2026-09-24T09:20:12.898Z",
+        "action": "Imported from Google Drive folder",
+        "actor": "admin"
+      }
+    ]
+  }
+]

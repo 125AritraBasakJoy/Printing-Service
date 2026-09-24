@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { authMiddleware } from '../middleware/authMiddleware.js';
+import { store as jobsStore } from '../store/jobStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -50,8 +51,8 @@ const upload = multer({
 
 export const router = express.Router();
 
-// In-memory job repository with persistence fallback
-const jobsStore = new Map();
+// Persistent job repository (JSON-file backed — survives server restarts)
+// See src/store/jobStore.js
 
 // Helper to generate shortcode
 function generateShortCode() {

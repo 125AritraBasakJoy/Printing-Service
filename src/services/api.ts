@@ -292,6 +292,37 @@ export const api = {
     return newJob;
   },
 
+  // Import all files from a public Google Drive folder link.
+  // The backend recursively downloads every file and registers print jobs.
+  async importFromDrive(
+    driveUrl: string,
+    options?: { dryRun?: boolean; copies?: number; colorMode?: 'bw' | 'color'; customerName?: string }
+  ): Promise<{ success: boolean; importedCount?: number; files?: any[]; failed?: any[]; error?: string }> {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/drive/import`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': ADMIN_SECRET,
+        },
+        body: JSON.stringify({
+          url: driveUrl,
+          dryRun: options?.dryRun || false,
+          copies: options?.copies ?? 1,
+          colorMode: options?.colorMode ?? 'bw',
+          customerName: options?.customerName || 'Drive Import',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        return { success: false, error: data.error || `Backend responded with ${res.status}` };
+      }
+      return data;
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Network error contacting backend' };
+    }
+  },
+
   // Update status (e.g. when shopkeeper clicks Print)
   updateJobStatus(
     jobId: string,

@@ -20,6 +20,8 @@ import {
   ShieldAlert,
   Send,
   Printer,
+  FolderDown,
+  Loader2,
 } from 'lucide-react';
 import {
   ColorMode,
@@ -89,11 +91,40 @@ export const AdminUploadPage: React.FC<AdminUploadPageProps> = ({
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [activeQrModalJob, setActiveQrModalJob] = useState<PrintJob | null>(null);
 
+  // Google Drive import state
+  const [driveUrl, setDriveUrl] = useState('');
+  const [driveImporting, setDriveImporting] = useState(false);
+  const [driveResult, setDriveResult] = useState<
+    { success: boolean; importedCount?: number; files?: any[]; failed?: any[]; error?: string } | null
+  >(null);
+
   // Dynamic pricing
   const pricing: PricingBreakdown = calculatePrintPricing(pageCount, settings, currency);
 
   const refreshJobs = () => {
     setActiveJobs(api.getJobs());
+  };
+
+  const refreshJobsFromBackend = async () => {
+    const list = await api.fetchJobs();
+    setActiveJobs(list);
+  };
+
+  const handleDriveImport = async () => {
+    if (!driveUrl.trim()) {
+      setDriveResult({ success: false, error: 'Paste a Google Drive folder link first.' });
+      return;
+    }
+    setDriveImporting(true);
+    setDriveResult(null);
+    const result = await api.importFromDrive(driveUrl.trim(), {
+      customerName: customerName.trim() || 'Drive Import',
+    });
+    setDriveResult(result);
+    setDriveImporting(false);
+    if (result.success) {
+      await refreshJobsFromBackend();
+    }
   };
 
   useEffect(() => {
@@ -249,6 +280,83 @@ export const AdminUploadPage: React.FC<AdminUploadPageProps> = ({
               onFileLoaded={handleFileLoaded}
               selectedFileName={fileName}
             />
+
+            {/* Google Drive Folder Import */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                  <FolderDown className="w-4 h-4 text-emerald-600" />
+                  Import from Google Drive
+                </span>
+                <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                  Folder Link
+                </span>
+              </div>
+
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Paste a Drive folder link shared as <strong>“Anyone with the link”</strong>. Every file inside
+                (including subfolders) is fetched to the server and appears in the print queue below — ready to print.
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="url"
+                  value={driveUrl}
+                  onChange={(e) => setDriveUrl(e.target.value)}
+                  placeholder="https://drive.google.com/drive/folders/…"
+                  disabled={driveImporting}
+                  className="flex-1 px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={handleDriveImport}
+                  disabled={driveImporting || !driveUrl.trim()}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shrink-0"
+                >
+                  {driveImporting ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Fetching files…</span>
+                    </>
+                  ) : (
+                    <>
+                      <FolderDown className="w-3.5 h-3.5" />
+                      <span>Fetch All Files</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {driveResult && !driveResult.success && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl font-medium">
+                  ⚠️ {driveResult.error}
+                </div>
+              )}
+
+              {driveResult && driveResult.success && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl space-y-2">
+                  <div className="font-bold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    Imported {driveResult.importedCount} file{driveResult.importedCount === 1 ? '' : 's'} — now in the print queue below.
+                  </div>
+                  {driveResult.files && driveResult.files.length > 0 && (
+                    <ul className="space-y-1 max-h-40 overflow-y-auto">
+                      {driveResult.files.map((f: any) => (
+                        <li key={f.shortCode || f.driveFileId} className="flex items-center justify-between gap-2">
+                          <span className="truncate" title={f.fileName}>{f.drivePath ? `${f.drivePath}/` : ''}{f.fileName}</span>
+                          <span className="font-mono font-bold text-emerald-700 shrink-0">{f.shortCode}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {driveResult.failed && driveResult.failed.length > 0 && (
+                    <div className="text-amber-700">
+                      {driveResult.failed.length} file(s) failed: {driveResult.failed.map((f: any) => f.name).join(', ')}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Privacy & Auto-Wipe Protection Card */}
             <div className="bg-indigo-950 text-white rounded-2xl p-5 shadow-sm space-y-3">
