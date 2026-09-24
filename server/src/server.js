@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { router as printRoutes } from './routes/printRoutes.js';
 
@@ -45,6 +46,22 @@ app.get('/api/health', (req, res) => {
 
 // Mount Print Routes
 app.use('/api', printRoutes);
+
+// Serve the built frontend (single-origin deployment, e.g. Render).
+// The React build lives in <repo-root>/dist and is gitignored, so the
+// hosting platform's build command must run `npm run build` first.
+const distDir = path.resolve(__dirname, '../../dist');
+if (fs.existsSync(path.join(distDir, 'index.html'))) {
+  app.use(express.static(distDir));
+  // SPA fallback: let the client-side router handle /admin, /queue, /print/:code
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) return next();
+    res.sendFile(path.join(distDir, 'index.html'));
+  });
+  console.log(`[Static] Serving frontend from ${distDir}`);
+} else {
+  console.warn(`[Static] No frontend build found at ${distDir} — running in API-only mode.`);
+}
 
 // Error Handler
 app.use((err, req, res, next) => {
