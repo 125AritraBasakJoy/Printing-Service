@@ -1,6 +1,9 @@
 import { PrintJob, JobStatus, PrintSettings, PricingBreakdown } from '../types/print';
 import { calculatePrintPricing } from './pricingService';
 
+export const BACKEND_URL =
+  import.meta.env.VITE_API_URL || 'https://printing-service-vv0a.onrender.com';
+
 const STORAGE_KEY = 'private_print_bridge_jobs_v3';
 const AUTH_KEY = 'private_print_bridge_admin_auth';
 const DEFAULT_ADMIN_PASSWORD = 'admin';
@@ -57,7 +60,7 @@ export const api = {
     if (username.trim() === 'Harry' && password === 'Dumbledore') {
       localStorage.setItem(AUTH_KEY, 'authenticated');
       // Verify with backend if online
-      fetch('/api/auth/verify', {
+      fetch(`${BACKEND_URL}/api/auth/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
@@ -125,6 +128,39 @@ export const api = {
     return found || null;
   },
 
+  // Fetch from remote backend when opened on shopkeeper PC
+  async fetchJobById(idOrCode: string): Promise<PrintJob | null> {
+    const local = this.getJobById(idOrCode);
+    if (local && local.fileDataUrl) return local;
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/jobs/${encodeURIComponent(idOrCode.trim())}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (data.success && data.job) {
+        const remoteJob = data.job;
+        const fileUrl = `${BACKEND_URL}${remoteJob.fileUrl}`;
+        const hydratedJob: PrintJob = {
+          ...remoteJob,
+          fileDataUrl: fileUrl,
+          pages: [
+            {
+              pageNumber: 1,
+              title: remoteJob.fileName,
+              previewUrl: fileUrl,
+            },
+          ],
+        };
+        const currentList = this.getJobs();
+        safeSaveJobs([hydratedJob, ...currentList.filter((j) => j.id !== hydratedJob.id)]);
+        return hydratedJob;
+      }
+    } catch (err) {
+      console.error('[API] Error fetching remote job from backend:', err);
+    }
+    return local;
+  },
+
   // Upload new document
   uploadDocument(
     data: Omit<PrintJob, 'id' | 'shortCode' | 'uploadedAt' | 'history' | 'printedCopiesCount'>,
@@ -171,7 +207,7 @@ export const api = {
       formData.append('autoDeleteAfterPrint', String(data.autoDeleteAfterPrint));
       formData.append('pageCount', String(data.pageCount || 1));
 
-      fetch('/api/upload', {
+      fetch(`${BACKEND_URL}/api/upload`, {
         method: 'POST',
         headers: {
           'x-admin-key': ADMIN_SECRET,
@@ -243,7 +279,7 @@ export const api = {
     safeSaveJobs(jobs);
 
     // Send status update to backend server to trigger physical file deletion
-    fetch(`/api/jobs/${jobId}/status`, {
+    fetch(`${BACKEND_URL}/api/jobs/${jobId}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -264,7 +300,7 @@ export const api = {
     if (filtered.length !== jobs.length) {
       safeSaveJobs(filtered);
       // Notify backend
-      fetch(`/api/jobs/${jobId}`, {
+      fetch(`${BACKEND_URL}/api/jobs/${jobId}`, {
         method: 'DELETE',
       }).catch(() => {});
       return true;

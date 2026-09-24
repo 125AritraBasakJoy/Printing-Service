@@ -50,6 +50,13 @@ export default function App() {
         const match = api.getJobById(targetCode);
         if (match) {
           setSelectedJobId(match.id);
+        } else {
+          api.fetchJobById(targetCode).then((remoteMatch) => {
+            if (remoteMatch) {
+              reloadJobs();
+              setSelectedJobId(remoteMatch.id);
+            }
+          });
         }
       } else if (allJobs.length > 0 && !selectedJobId) {
         setSelectedJobId(allJobs[0].id);
@@ -119,9 +126,13 @@ export default function App() {
     }, 4000);
   };
 
-  const handleSearchJob = (query: string) => {
-    const match = api.getJobById(query);
+  const handleSearchJob = async (query: string) => {
+    let match = api.getJobById(query);
+    if (!match) {
+      match = await api.fetchJobById(query);
+    }
     if (match) {
+      reloadJobs();
       setSelectedJobId(match.id);
       navigate('shop', match.shortCode);
       showToast(`Loaded ${match.shortCode} (${match.fileName}) for printing`, 'success');
